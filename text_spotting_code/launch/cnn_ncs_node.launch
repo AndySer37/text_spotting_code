@@ -1,0 +1,22 @@
+<launch>
+    <arg name="veh"/>
+    <arg name="camera_name" default="atlas" doc="location of the camera" />
+    <arg name="local" default="false" doc="true for running everything you possibly can on laptop. false for everything running on vehicle."/>
+    <arg name="config" default="baseline" doc="Specify a config."/>
+    <arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman." />
+
+    <group ns="$(arg veh)">
+	
+    	<!-- Run on local (laptop) -->
+    	<node if="$(arg local)" pkg="text_spotting_code" type="ncs_node.py" name="ncs_node" output="screen" clear_params="true" required="true">
+		<param name="camera_name" value="$(arg camera_name)"/>
+    	</node>
+
+    	<!-- Run on remote (vehicle) -->
+    	<include unless="$(arg local)" file="$(find duckietown)/machines"/>
+    	<node unless="$(arg local)" machine="$(arg veh)" pkg="text_spotting_code" type="ncs_node.py" name="ncs_node" output="screen" clear_params="true" required="true">
+        	<param name="camera_name" value="$(arg camera_name)"/>
+    	</node>	
+    </group>
+
+</launch>

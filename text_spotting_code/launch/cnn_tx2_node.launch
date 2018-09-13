@@ -1,0 +1,31 @@
+<launch>
+        <arg name="veh"/>
+        <arg name="local" default="false" doc="true for running everything you possibly can on laptop. false for everything running on vehicle."/>
+        <arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman." />
+        <arg name="camera" default="true" doc="camera set to false means only apriltags no camera nodes are launched"/>
+    <arg name="live" default="true" doc="live set to false means we don't run the actual camera (i.e. running from a log file" />
+    <arg name="width" default="640" doc="width of compressed image"/>
+    <arg name="height" default="480" doc="width of compressed image"/>
+    <arg name="tango" default="false" doc="subscribe tango image"/>
+
+
+
+    <!-- AprilTags Quads -->
+    <include if="$(arg camera)" file="$(find text_spotting_code)/launch/apriltags_camera.launch">
+		
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="local" value="$(arg local)"/>
+        <arg name="param_file_name" value="$(arg param_file_name)"/>
+    </include>
+	
+    <!-- Run on local (laptop) -->
+        <node if="$(arg local)" ns="$(arg veh)" pkg="text_spotting_code" type="cnn_node.py" name="cnn_node" output="screen" clear_params="true" required="true">
+        </node>
+
+    <!-- Run on remote (vehicle) -->
+    <include unless="$(arg local)" file="$(find duckietown)/machines"/>
+        <node unless="$(arg local)" ns="$(arg veh)" machine="$(arg veh)" pkg="text_spotting_code" type="cnn_node.py" name="cnn_node" output="screen" clear_params="true" required="true">
+        </node>	
+
+
+</launch>
