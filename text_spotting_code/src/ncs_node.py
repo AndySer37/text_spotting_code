@@ -4,7 +4,6 @@ import sys
 import cv2
 import numpy as np
 from sensor_msgs.msg import Image
-from sensor_msgs.msg import CompressedImage
 from os.path import expanduser
 from cv_bridge import CvBridge, CvBridgeError
 from duckietown_msgs.msg import Rect, Rects
@@ -15,19 +14,18 @@ home = expanduser("~")
 import time
 class NCS_node():
     def __init__(self):
-        self.switch_img = 0
         self.initial()
         #self.camera_name = rospy.get_param('~camera_name')
-        self.image_sub = rospy.Subscriber("/kara/camera_node/image/compressed", CompressedImage, self.img_cb, queue_size=1)
+        self.image_sub = rospy.Subscriber("/pbody/image_rect", Image, self.img_cb)
+        #self.image_sub = rospy.Subscriber("/camera/rgb/image_rect_color", Image, self.img_cb)
         #self.quad_sub = rospy.Subscriber("/"+self.camera_name+"/quad_proposals", Rects, self.img_crop)
-        #self.quad_sub = rospy.Subscriber("/atlas/quad_proposals", Rects, self.img_crop)
+        self.quad_sub = rospy.Subscriber("/pbody/quad_proposals", Rects, self.img_crop)
         self.image_pub = rospy.Publisher('gray', Image, queue_size=10)
         self.bridge = CvBridge()
         self.cv_image = 0
-        self.img_region = 0
         self.cv_img_crop = []
         self.switch_quad = 0
-        #self.switch_img = 0
+        self.switch_img = 1
         #NCS params
         #self.model = model = 'street_en_harvest'
         #self.start = 0
@@ -61,62 +59,48 @@ class NCS_node():
         # set the blob, label and graph
         self.device = mvnc.Device(self.devices[0])
         self.device.OpenDevice()
-        #network_blob = home + "/" + self.model + '.graph'
-        network_blob = home + "/" + "88200_prune_0"
+        network_blob = home + "/" + self.model + '.graph'
+
         #Load blob
         with open(network_blob, mode='rb') as f:
             blob = f.read()
 
         self.graph = self.device.AllocateGraph(blob)
-        self.switch_img = 1
-        print "open"
 
     def img_cb(self, data):
         #print "Image callback"
-        self.switch_img += 1
-        if self.switch_img != 60:
-            #print "wait for prediction"
+        if self.switch_img is 0:
             return
-        #self.switch_img = 0
         try:
-            self.switch_img = 0
-            #print "switch_off"
             self.start = data.header.stamp.secs
-            start = time.time()
-            #self.cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-            np_arr = np.fromstring(data.data, np.uint8)
-            self.cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-            img_gray = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2GRAY)
-            mser = cv2.MSER_create(12, 100, 250000, 0.25, 0.2, 200, 1.01, 0.003, 5)
-            regions, _ = mser.detectRegions(img_gray)
-            hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
-            #cv2.polylines(gray_img, hulls, 1, (255, 0, 0), 2)
-            imgContours = self.cv_image
-            contour_list = []
-            for i, contour in enumerate(hulls):
-                x,y,w,h = cv2.boundingRect(contour)
-                #repeat = self.checkContourRepeat(contour_list, x, y, w, h)
-                #img_region = img_cv[y:y+h, x:x+w]      
-                if 2*h < w and h*w < 10000 and h*w > 1000:
-                    cv2.rectangle(imgContours,(x, y),(x+w, y+h),(0,255,0),3)
-                    img_region = self.cv_image[y:y+h, x:x+w]
-                    self.cv_img_crop.append(img_region)
-            image_all_mser_image = Image()
-            image_all_mser_image.header = rospy.Time.now
-            image_all_mser_image = self.bridge.cv2_to_imgmsg(imgContours, "bgr8")
-            self.image_pub.publish(image_all_mser_image)
-            print "detection time:",time.time()-start
-            self.ncs()      
-            
+            #print self.start
+            self.cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+            self.switch_quad = 1
+            self.switch_img = 0
+
         except CvBridgeError as e:
             print(e)
 
+    def img_crop(self, quads):
+        #print "Quad callback"
+        if self.switch_quad is 0:
+            return
+        for quad in quads.rects:
+            #print quad
+            img = self.cv_image[quad.y:quad.y+quad.h, quad.x:quad.x+quad.w]
+            self.cv_img_crop.append(img)
+        self.switch_quad = 0
+
     def ncs(self):
-        print "receive proposal"
+        if type(self.cv_image) == np.int:
+            print "No image receive."
+            return
+
+        if self.switch_img is not 0 or self.switch_quad is not 0:
+            return
         i = 0
         for im in self.cv_img_crop:
         #im = self.cv_image
-            start = time.time()
             im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
             im = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
             if im is None:
@@ -140,23 +124,22 @@ class NCS_node():
             #order = output.argsort()[::-1][:4]
             top1 = output.argmax()
 
-            #if output[top1] >= 0.9:
-            print 'class: ',top1
-            print output[top1] 
-            print "prediction time:", time.time()-start
+            if output[top1] >= 0.9:
+                print 'class: ',top1
+                print output[top1] 
 
         self.cv_img_crop = []
-        #self.switch_img = 1
-        #print "switch_on"
-
-    def onShutdown(self):
-        rospy.loginfo("[%s] Shutdown." %(self.node_name))
+        self.switch_img = 1
     
 def main(args):
-    rospy.init_node('ncs_node', anonymous = False)
+    rospy.init_node('NCS_node', anonymous = False)
     ic = NCS_node()
-    rospy.on_shutdown(ic.onShutdown)
-    rospy.spin()
+    try:
+        while(1):
+            ic.ncs()
+    except KeyboardInterrupt:
+        print "shutting down"
+    cv2.destoryAllWindows()
 
 if __name__ == '__main__':
     main(sys.argv)
