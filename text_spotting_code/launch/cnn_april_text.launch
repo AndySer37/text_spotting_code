@@ -35,29 +35,16 @@
         <arg name="local" value="$(arg local)"/>
         <arg name="param_file_name" value="$(arg param_file_name)"/>
     </include>
- 
- 	<!-- Postprocessing node -->
- 	<!--remap from="apriltags_postprocessing_node/apriltags_in" to="tag_detections" /-->
- 	<!--include file="$(find apriltags_ros_caffe)/launch/apriltags_postprocessing_node.launch">
- 		<arg name="veh" value="$(arg veh)"/>
+
+    <remap from="ncs_rect" to="camera_node/image/rect" />
+    <remap from="ncs_quad_proposals" to="quad_proposals" />
+    <include file="$(find text_spotting_code)/launch/cnn_ncs_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
         <arg name="local" value="$(arg local)"/>
-        <arg name="param_file_name" value="$(arg param_file_name)"/-->
- 	<!--/include-->
-    <group ns="$(arg veh)">
+        <arg name="param_file_name" value="$(arg param_file_name)"/>
+    </include>
 
-        <!-- Run on local (laptop) -->
-        <remap from="ncs_rect" to="camera_node/image/rect" />
-        <remap from="ncs_quad_proposals" to="quad_proposals" />
-        <node if="$(arg local)" pkg="text_spotting_code" type="ncs_node.py" name="ncs_node" output="screen" clear_params="true" required="true">
-                <param name="camera_name" value="$(arg camera_name)"/>
-        </node>
-
-        <!-- Run on remote (vehicle) -->
-        <include unless="$(arg local)" file="$(find duckietown)/machines"/>
-        <node unless="$(arg local)" machine="$(arg veh)" pkg="text_spotting_code" type="ncs_node.py" name="ncs_node" output="screen" clear_params="true" required="true">
-                <param name="camera_name" value="$(arg camera_name)"/>
-        </node>
-    </group>
+ 
 
 
 </launch>
