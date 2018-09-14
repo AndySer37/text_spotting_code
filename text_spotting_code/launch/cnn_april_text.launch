@@ -46,6 +46,8 @@
     <group ns="$(arg veh)">
 
         <!-- Run on local (laptop) -->
+        <remap from="ncs_rect" to="camera_node/image/rect" />
+        <remap from="ncs_quad_proposals" to="quad_proposals" />
         <node if="$(arg local)" pkg="text_spotting_code" type="ncs_node.py" name="ncs_node" output="screen" clear_params="true" required="true">
                 <param name="camera_name" value="$(arg camera_name)"/>
         </node>
