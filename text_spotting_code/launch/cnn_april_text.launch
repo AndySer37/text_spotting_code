@@ -36,8 +36,8 @@
         <arg name="param_file_name" value="$(arg param_file_name)"/>
     </include>
 
-    <remap from="ncs_rect" to="camera_node/image/rect" />
-    <remap from="ncs_quad_proposals" to="quad_proposals" />
+    <remap from="ncs_node/ncs_image_rect" to="camera_node/image/rect" />
+    <remap from="ncs_node/ncs_quad_proposals" to="quad_proposals" />
     <include file="$(find text_spotting_code)/launch/cnn_ncs_node.launch">
         <arg name="veh" value="$(arg veh)"/>
         <arg name="local" value="$(arg local)"/>

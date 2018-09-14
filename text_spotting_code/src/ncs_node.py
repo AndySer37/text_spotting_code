@@ -16,10 +16,10 @@ class NCS_node():
     def __init__(self):
         self.initial()
         #self.camera_name = rospy.get_param('~camera_name')
-        self.image_sub = rospy.Subscriber("/ncs_image_rect", Image, self.img_cb)
+        self.image_sub = rospy.Subscriber("~ncs_image_rect", Image, self.img_cb)
         #self.image_sub = rospy.Subscriber("/camera/rgb/image_rect_color", Image, self.img_cb)
         #self.quad_sub = rospy.Subscriber("/"+self.camera_name+"/quad_proposals", Rects, self.img_crop)
-        self.quad_sub = rospy.Subscriber("/ncs_quad_proposals", Rects, self.img_crop)
+        self.quad_sub = rospy.Subscriber("~ncs_quad_proposals", Rects, self.img_crop)
         self.image_pub = rospy.Publisher('gray', Image, queue_size=10)
         self.bridge = CvBridge()
         self.cv_image = 0
